@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <input id="message" placeholder="enter a message" />
+  <button onclick="sendSocketMessage()">Send</button>
+  <ul id="messages"></ul>
+  <script>
+    var ws = new WebSocket("ws://192.168.2.26:8081")
+    var messageInput = document.getElementById('message')
+    var messageList = document.getElementById('messages')
+
+    ws.addEventListener('message', event => {
+      var newMsgTag = document.createElement('li')
+      newMsgTag.innerText = event.data
+      messageList.appendChild(newMsgTag)
+    })
+
+    function sendSocketMessage(){
+      if (ws.readyState == WebSocket.OPEN) {
+        ws.send(messageInput.value)
+        messageInput.value = ""
+      }
+    }
+  </script>
+</body>
+</html>

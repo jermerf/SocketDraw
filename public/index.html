@@ -4,26 +4,99 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
+  <style>
+    canvas {
+      border: 1px solid grey;
+    }
+    #drawCanvas {
+      position: absolute;
+      left: 8px;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <input id="message" placeholder="enter a message" />
-  <button onclick="sendSocketMessage()">Send</button>
+  <canvas id="mainCanvas" height="500" width="500"></canvas>
+  <canvas id="drawCanvas" height="500" width="500"></canvas>
+  <input onchange="setLineWidth(event)" type="number" value="1" min="1" max="20" />
+  <input onchange="setColor(event)" type="color" />
   <ul id="messages"></ul>
   <script>
+    var can = document.getElementById('mainCanvas')
+    var drawCan = document.getElementById('drawCanvas')
+    var pen = can.getContext('2d')
+    var drawPen = drawCan.getContext('2d')
+    var prevX = 0, prevY = 0
+    var drawing = false
+    var pointList = []
+
+    function setLineWidth(event){
+      pen.lineWidth = event.target.value
+      drawPen.lineWidth = event.target.value
+    }
+    function setColor(event){
+      pen.strokeStyle = event.target.value
+      drawPen.strokeStyle = event.target.value
+    }
+
+    function drawPoints(points) {
+      if (points.length == 0) return
+      pen.beginPath()
+      pen.moveTo(points[0].x, points[0].y)
+      for (var i=1; i<points.length; i++) {
+        pen.lineTo(points[i].x, points[i].y)
+        pen.lineWidth = points[i].lineWidth
+        pen.strokeStyle = points[i].color
+      }
+      pen.stroke()
+    }
+
+    can.addEventListener("mousedown", event => {
+      drawing = true
+      prevX = event.offsetX
+      prevY = event.offsetY
+      pointList = []
+      pointList.push({
+        x: prevX,
+        y: prevY,
+        lineWidth: pen.lineWidth,
+        color: pen.strokeStyle
+      })
+    })
+    can.addEventListener("mousemove", event => {
+      if (!drawing) return
+      let x = event.offsetX
+      let y = event.offsetY
+      drawPen.beginPath()
+      drawPen.moveTo(prevX, prevY)
+      drawPen.lineTo(x, y)
+      drawPen.stroke()
+      prevX = x
+      prevY = y
+      pointList.push({ x: x,  y: y, lineWidth: pen.lineWidth, color: pen.strokeStyle })
+    })
+
+    var cancelDrawing = event => {
+      drawing = false
+      sendSocketPoints()
+      drawPen.clearRect(0,0, drawCan.width, drawCan.height)
+      drawPoints(pointList)
+    }
+    can.addEventListener("mouseout", cancelDrawing)
+    can.addEventListener("mouseup", cancelDrawing)
+    can.addEventListener("mouseleave", cancelDrawing)
+
     var ws = new WebSocket("ws://192.168.2.26:8081")
-    var messageInput = document.getElementById('message')
     var messageList = document.getElementById('messages')
 
     ws.addEventListener('message', event => {
-      var newMsgTag = document.createElement('li')
-      newMsgTag.innerText = event.data
-      messageList.appendChild(newMsgTag)
+      var points = JSON.parse(event.data)
+      drawPoints(points)
     })
 
-    function sendSocketMessage(){
+    function sendSocketPoints(){
       if (ws.readyState == WebSocket.OPEN) {
-        ws.send(messageInput.value)
-        messageInput.value = ""
+        ws.send(JSON.stringify(pointList))
       }
     }
   </script>

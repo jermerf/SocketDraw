@@ -1,7 +1,7 @@
 const express = require('express')
 const SocketServer = require("./modules/socket-server.js")
 
-const PORT = 8080
+const PORT = 3000
 
 var app = express()
 
